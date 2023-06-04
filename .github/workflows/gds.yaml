@@ -17,6 +17,14 @@ jobs:
     # ubuntu
     runs-on: ubuntu-latest
     steps:
+
+    # install librsvg2-bin (for rsvg-convert) and pngquant (for heavy PNG compression)
+    - name: install prerequisites
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: librsvg2-bin pngquant
+        version: tt03p5 # I think naming a version builds a reusable packages cache for that name.
+
     # need the repo checked out
     - name: checkout repo
       uses: actions/checkout@v3
@@ -81,8 +89,16 @@ jobs:
         key: ${{ runner.os }}-runs-${{ github.run_id }}
 
     # create png
-    - name: png
-      run: ./tt/tt_tool.py --create-png
+    - name: render svg from gds
+      run: ./tt/tt_tool.py --create-svg
+
+    - name: convert svg to png
+      run: |
+        echo 'text { display:none; }' > gds_render.css
+        rsvg-convert gds_render.svg -s gds_render.css -o gds_render_png24.png --no-keep-image-data
+
+    - name: shrink png
+      run: pngquant --nofs --strip --output gds_render.png gds_render_png24.png
 
     - name: populate png cache
       uses: actions/cache@v3
