@@ -93,12 +93,12 @@ jobs:
       run: ./tt/tt_tool.py --create-svg
 
     - name: convert svg to png
-      run: |
-        echo 'text { display:none; }' > gds_render.css
-        rsvg-convert gds_render.svg -s gds_render.css -o gds_render_png24.png --no-keep-image-data
+      run: rsvg-convert gds_render.svg -s <(echo 'text{display:none;}') -o gds_render_png24.png --no-keep-image-data
 
     - name: shrink png
-      run: pngquant --nofs --strip --output gds_render.png gds_render_png24.png
+      run: |
+        pngquant --nofs --strip --output gds_render.png gds_render_png24.png
+        ls -al gds_render*.png
 
     - name: populate png cache
       uses: actions/cache@v3
