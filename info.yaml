@@ -1,18 +1,19 @@
 --- 
 # TinyTapeout project information
 project:
-  wokwi_id:    0        # If using wokwi, set this to your project's ID
+  wokwi_id:    0        # Not using Wokwi; otherwise, would be the Wokwi project ID
 
-# If using an HDL, set wokwi_id as 0 and uncomment and list your source files here. 
-# Source files must be in ./src and you must list each source file separately
-#  source_files:        
-#    - counter.v
-#    - decoder.v
-#  top_module:  "tt_um_example"      # Put the name of your top module here, must start with "tt_um_". Make it unique by prepending your github username
+  # If using an HDL, set wokwi_id as 0 and uncomment and list your source files here. 
+  # Source files must be in ./src and you must list each source file separately
+  source_files:
+    - top.v                                 # This is my wrapper to connect the TT interface with my design.
+    - lzc_fast.v                            # This is just an experiment included in the design; a leading zero counter with 24-bit input.
+    - solo_squash.v                         # My main design HDL is in a git submodule of the src/ dir.
+  top_module: tt_um_algofoogle_solo_squash  # Top module name; must start with "tt_um_". Make it unique by prepending your github username
 
-# How many tiles your design occupies? A single tile is about 167x108 uM.
-# Before changing this, please reach out to us on discord to discuss your design.
-  tiles: "1x1"    # Valid values: 1x1, 1x2, 2x2, 4x2 or 8x2
+  # How many tiles your design occupies? A single tile is about 167x108 uM.
+  # Before changing this, please reach out to us on discord to discuss your design.
+  tiles: 1x1    # Valid values: 1x1, 1x2, 2x2, 4x2 or 8x2
 
 # Keep a track of the submission yaml
 yaml_version: 3.5
@@ -22,54 +23,131 @@ yaml_version: 3.5
 #
 # Here is a great example: https://github.com/davidsiaw/tt02-davidsiaw-stackcalc/blob/38c5647f83aad2aec675d566aa3d67b98f0aac81/info.yaml
 documentation: 
-  author:       ""      # Your name
-  title:        ""      # Project title
-  language:     "Wokwi" # other examples include Verilog, Amaranth, VHDL, etc
-  description:  ""      # Short description of what your project does
+  author:       Anton Maurovic (algofoogle)
+  title:        Solo Squash VGA game
+  language:     Verilog
+  description:  VGA display driver that implements a minimal Pong-like game for 1 player
 
 # Longer description of how the project works. You can use standard markdown format.
   how_it_works: |
-      Explain how your project works
+    ### What is Solo Squash?
+
+    A 25MHz clock drives a simple 640x480 VGA generator, and in turn generates a simple "game"
+    that displays a bouncing ball within a playfield of 3 walls, with the 4th side open except
+    for a lone paddle that you as the player control. Pong? What's that?
+    Sounds too new-fangled for me!
+
+
+    ### What's the objective of the game?
+
+    Keep the ball bouncing in the playfield for as long as you can. Sometimes it's harder than it sounds!
+    There is no score, and no other objective. It's educational, and offers mild thrills,
+    just like Edna.
+
+    One button moves the paddle up, the other down, at a constant rate.
+
+    Bounces off the walls produce a simple tone, and off the paddle produce a slightly different tone.
+    Letting the ball escape will humiliatingly drone on for a bit before the ball returns to play.
+
+    A hint: Let the drifting blue background pattern be your guide for where the ball will
+    ultimately end up as it bounces around.
+
+
+    ### How does the design work?
+
+    Tones produced on `speaker` are derived from divisions (bits) of the vertical scan register.
+
+    Rendering of the walls, ball, and paddle are done using registers (more-so than combo logic)
+    that turn the VGA red/green channels on and off at the right times as the VGA beam marches on.
+    The blue background pattern is done with bitwise logic from the horizontal and vertical scan
+    counters, with another counter to create the drifting effect by applying an offset.
+
+    Detecting when a bounce happens is done by detecting if any pixel we're rendering coexists
+    in the ball and wall (or paddle). Long tone and ball return is actually just an accidental
+    side effect of counters rolling over, but that's good enough for me!
+
 
 # Instructions on how someone could test your project, include things like what buttons do what and how to set the clock if needed
   how_to_test:  |
-      Explain how to test your project
+    Assuming ~3.3V outputs from the ASIC, put a 270&ohm; resistor on each of `red`, `green`, and
+    `blue` and then connect those to the respective VGA input signals.
+    This should give you close enough to the 0.7V standard VGA full-brightness signal for each of the
+    colour channels (i.e. by voltage-dividing with your VGA display's internal 75&ohm; impedance).
 
-# A description of what the inputs do (e.g. red button, SPI CLK, SPI MOSI, etc).
+    Also connect the `hsync` and `vsync` lines to their respective VGA inputs; I feel comfortable
+    using an extra 100&ohm; resistor on those, too, just to help in case there are accidental shorts.
+
+    Connect each of the 4 inputs *through* pushbuttons to high (VCC). The ASIC's internal pull-downs
+    should be enabled by default, meaning the (active-high) signals are **low** by default
+    (in the buttons' normally-open state), and get pulled **high** when pressed.
+
+    Optionally connect something for sound to the `speaker` output: e.g. a piezo speaker
+    (or ear-phone speaker) in series with a 1k&ohm; (or 670&ohm; minimum) current limiting resistor
+    to ground... or an "aux cord" to a line-in amplifier.
+
+    Supply about a 25MHz clock, and hopefully the design should run immediately as is, producing
+    a VGA display, but you can also assert reset if you want to start at a known state:
+    i.e. VGA scan immediately starting from the top-left pixel of the display, with the first
+    two full lines rendered hopefully yellow (i.e. `red` and `green` channels both asserted,
+    but not `blue`).
+
+    Note also, for other testing: The upper 2 bits of the dedicated output pins will
+    output the `col==0` and `row==0` signals; and the upper 2 bits of the bidirectional IO
+    are called `debug1` (bit 6) and `debug2` (bit 7). If the input `extra_sel` is low,
+    they will output the *unregistered* green and red signals respectively.
+    Otherwise, they will output the 'visible' and blue signals respectively.
+
+    ### Bonus: Leading Zero Counter experiment
+
+    There is an extra feature in this design which is just an experiment: I've included a
+    leading zero counter with a 24-bit input that comes from the concatention of these internal
+    signals of the solo_squash module: `{offset[3:0],v,h}`, i.e. this pattern of 24 bits
+    is fed into the LZC:
+
+    `oooo'vvvv'vvvv'vvhh'hhhh'hhhh` -- Where the upper 4 bits are effectively a frame counter,
+    the middle 10 "v" bits are the current line number, and the lower 10 "h" bits are the
+    current horizontal pixel.
+
+    This packed value then has its total number of leading zeroes counted, and output on the
+    lower 5 bits of the bidirectional port (known internally `uio_out[4:0]`), i.e. a number
+    from 0 to 24. The next bit (`uio_out[5]`) is 1 if the zero count is 24 (i.e. all zeroes).
+
+
+# A description of what the inputs do:
   inputs:               
-    - none
-    - none
-    - none
-    - none
-    - none
-    - none
-    - none
-    - none
-# A description of what the outputs do (e.g. status LED, SPI MISO, etc)
+    - pause       # Keep the game in a paused state while asserted.
+    - new_game    # Reset game state.
+    - down_key    # Move paddle down while asserted.
+    - up_key      # Move paddle up while asserted.
+    - extra_sel   # Select what the extra debug1&2 signals (top 2 bits of bidirectional port) are for.
+    - none        # Unused.
+    - none        # Unused.
+    - none        # Unused.
+# A description of what the outputs do:
   outputs:
-    - segment a
-    - segment b
-    - segment c
-    - segment d
-    - segment e
-    - segment f
-    - segment g
-    - dot
-# A description of what the bidirectional I/O pins do (e.g. I2C SDA, I2C SCL, etc)
+    - blue        # VGA signal: blue
+    - green       # VGA signal: green
+    - red         # VGA signal: red
+    - hsync       # VGA signal: horizontal sync pulse
+    - vsync       # VGA signal: vertical sync pulse
+    - speaker     # Speaker tone
+    - col0        # Asserted whenever VGA horizontal scan is at pixel 0
+    - row0        # Asserted while the VGA vertical scan is at line 0
+# A description of what the bidirectional I/O pins do:
   bidirectional:
-    - none
-    - none
-    - none
-    - none
-    - none
-    - none
-    - none
-    - none
+    - lzc_out[0]  # Leading zero counter experiment; count bit 0
+    - lzc_out[1]  # Leading zero counter experiment; count bit 1
+    - lzc_out[2]  # Leading zero counter experiment; count bit 2
+    - lzc_out[3]  # Leading zero counter experiment; count bit 3
+    - lzc_out[4]  # Leading zero counter experiment; count bit 4
+    - lzc_all     # Leading zero counter experiment; asserted if lzc_out==24
+    - debug1      # If extra_sel==0: UNregistered (direct) green signal; else: 'visible' signal.
+    - debug2      # if extra_sel==0: UNregistered (direct) red signal; else: UNregistered blue signal.
 
 # The following fields are optional
-  tag:          ""      # comma separated list of tags: test encryption, experiment, clock, animation, utility, industrial, pwm, fpga, alu, microprocessor, risc, riscv, sensor, signal generator, fft, filter, music, bcd, sound, serial, timer, random number generator, calculator, decoder, counter, puzzle, multiplier, game, oscillator,
-  external_hw:  ""      # Describe any external hardware needed
-  discord:      ""      # Your discord handle, used for communication and automatically assigning tapeout role after a submission
-  doc_link:     ""      # URL to longer form documentation, eg the README.md in your repository
-  clock_hz:     0       # Clock frequency in Hz (if required)
-  picture:      ""      # relative path to a picture in your repository
+  tag:          vga, game      # comma separated list of tags: test encryption, experiment, clock, animation, utility, industrial, pwm, fpga, alu, microprocessor, risc, riscv, sensor, signal generator, fft, filter, music, bcd, sound, serial, timer, random number generator, calculator, decoder, counter, puzzle, multiplier, game, oscillator,
+  external_hw:  "270R resistors on each of red, green, blue to VGA cable; buttons to VCC for up/down; amplifier taking line-in from speaker output; optional buttons for pause/new game"      # Describe any external hardware needed
+  discord:      algofoogle#4505      # Your discord handle, used for communication and automatically assigning tapeout role after a submission
+  doc_link:     https://github.com/algofoogle/tt03p5-solo-squash      # URL to longer form documentation, eg the README.md in your repository
+  clock_hz:     25000000       # Clock frequency in Hz (if required)
+  picture:      doc/verilator.png      # relative path to a picture in your repository

@@ -1,0 +1,46 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Fri Jun  2 15:11:20 2023
+[*]
+[dumpfile] "/home/zerotoasic/anton/tt03p5-solo-squash/src/tb.vcd"
+[dumpfile_mtime] "Fri Jun  2 15:10:46 2023"
+[dumpfile_size] 96599
+[savefile] "/home/zerotoasic/anton/tt03p5-solo-squash/src/tb.gtkw"
+[timestart] 0
+[size] 1728 929
+[pos] 74 58
+*-18.000000 810001 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[treeopen] tb.tt_um_algofoogle_solo_squash.
+[sst_width] 297
+[signals_width] 118
+[sst_expanded] 1
+[sst_vpaned_height] 273
+@28
+tb.clk
+tb.ext_reset_n
+tb.new_game
+tb.up_key
+tb.down_key
+tb.pause
+@200
+-
+@28
+tb.red
+tb.green
+tb.blue
+tb.hsync
+tb.vsync
+@200
+-
+@28
+tb.speaker
+@200
+-
+@28
+tb.debug1
+tb.debug2
+@25
+tb.tt_um_algofoogle_solo_squash.game.h[9:0]
+[pattern_trace] 1
+[pattern_trace] 0
