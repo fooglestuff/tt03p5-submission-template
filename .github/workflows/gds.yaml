@@ -93,7 +93,7 @@ jobs:
       run: ./tt/tt_tool.py --create-svg
 
     - name: convert svg to png
-      run: rsvg-convert gds_render.svg -s <(echo 'text{display:none;}') -o gds_render_png24.png --no-keep-image-data
+      run: rsvg-convert gds_render.svg --unlimited -s <(echo 'text{display:none;}') -o gds_render_png24.png --no-keep-image-data
 
     - name: shrink png
       run: |
